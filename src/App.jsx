@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable react/react-in-jsx-scope */
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback } from "react";
 
 import Places from "./components/Places.jsx";
 import Modal from "./components/Modal.jsx";
@@ -9,33 +9,14 @@ import logoImg from "./assets/logo.png";
 import AvailablePlaces from "./components/AvailablePlaces.jsx";
 import { fetchUserPlaces, updateUserPlaces } from "./http.js";
 import ErrorComponent from "./components/ErrorComponent.jsx";
+import { useFetch } from "./hooks/useFetch.js";
 
 function App() {
   const selectedPlace = useRef();
-
-  const [userPlaces, setUserPlaces] = useState([]);
-  const [isFetching, setIsFetching] = useState(false);
-  const [error, setError] = useState();
-
   const [errorUpdatingPlaces, setErrorUpdationgPlaces] = useState();
-
-
   const [modalIsOpen, setModalIsOpen] = useState(false);
 
-  useEffect(() => {
-    async function fetchPlaces() {
-      setIsFetching(true);
-      try {
-        const userPlacesResponse = await fetchUserPlaces();
-        setUserPlaces(userPlacesResponse)
-      } catch (error) {
-        setError({ message: error.message || "Failed to fetch User Places" });
-        setUserPlaces([]);
-      }
-      setIsFetching(false);
-    }
-    fetchPlaces();
-  }, []);
+  const { isFetching, fetchedData: userPlaces, setFetchedData: setUserPlaces, error } = useFetch(fetchUserPlaces, []);
 
   function handleStartRemovePlace(place) {
     setModalIsOpen(true);
@@ -69,7 +50,7 @@ function App() {
       setUserPlaces((prevPickedPlaces) => prevPickedPlaces.filter((place) => place.id !== selectedPlace.current.id));
 
       try {
-        await updateUserPlaces(userPlaces.filter((place) => place !== selectedPlace.current.id));
+        await updateUserPlaces(userPlaces.filter((place) => place.id !== selectedPlace.current.id));
       } catch (error) {
         setErrorUpdationgPlaces({ message: error.message || "Failed to delete user place." });
         setUserPlaces(userPlaces);
@@ -77,7 +58,7 @@ function App() {
 
       setModalIsOpen(false);
     },
-    [userPlaces]
+    [userPlaces, setUserPlaces]
   );
 
   function handleError() {
@@ -103,14 +84,16 @@ function App() {
       </header>
       <main>
         {error && <ErrorComponent title={"An Error Occured!"} message={error.message}></ErrorComponent>}
-        {!error && <Places
-          title="I'd like to visit ..."
-          fallbackText="Select the places you would like to visit below."
-          isLoading={isFetching}
-          loadingText={"fetching your places..."}
-          places={userPlaces}
-          onSelectPlace={handleStartRemovePlace}
-        />}
+        {!error && (
+          <Places
+            title="I'd like to visit ..."
+            fallbackText="Select the places you would like to visit below."
+            isLoading={isFetching}
+            loadingText={"fetching your places..."}
+            places={userPlaces}
+            onSelectPlace={handleStartRemovePlace}
+          />
+        )}
 
         <AvailablePlaces onSelectPlace={handleSelectPlace} />
       </main>
